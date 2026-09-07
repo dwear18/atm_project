@@ -1,0 +1,18 @@
+[
+    {
+        "card_number": "1234-5678-9012-3456",
+        "pin_hash": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+        "holder_name": "Иванов Иван",
+        "balance": 47853.0,
+        "failed_attempts": 0,
+        "locked": false    
+    },
+    {
+        "card_number": "4575-2376-9510-9876",
+        "pin_hash": "fe2592b42a727e977f055947385b709cc82b16b9a87f88c6abf3900d65d0cdc3",
+        "holder_name": "Бежко Сергей",
+        "balance": 65891.0,
+        "failed_attempts": 0,
+        "locked": false
+    }
+]
