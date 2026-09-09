@@ -1,7 +1,5 @@
 """Модели данных."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, asdict
 
 
@@ -34,7 +32,7 @@ class Account:
 
     def masked_card_number(self) -> str:
         """Возвращает номер карты со скрытой средней частью."""
-        
+
         parts = self.card_number.split("-")
         if len(parts) <= 2:
             return self.card_number
