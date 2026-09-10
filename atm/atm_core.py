@@ -1,6 +1,5 @@
 import hashlib
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from .constants import (
     BANKNOTES,
@@ -34,19 +33,20 @@ def hash_pin(pin: str) -> str:
     return hashlib.sha256(pin.encode("utf-8")).hexdigest()
 
 
-class ATM(object):
+class ATM:
     """Логика операций банкомата: авторизация, снятие, внесение, перевод."""
 
     def __init__(self, accounts_path: str, transactions_path: str):
+        # Загружаем счета и историю операций из JSON-файлов.
         self.accounts_path = accounts_path
         self.transactions_path = transactions_path
-        self.accounts: List[Account] = load_accounts(accounts_path)
-        self.transactions: List[dict] = load_transactions(transactions_path)
-        self.current_account: Optional[Account] = None
+        self.accounts: list[Account] = load_accounts(accounts_path)
+        self.transactions: list[dict] = load_transactions(transactions_path)
+        self.current_account: Account | None = None
 
     # Авторизация
 
-    def find_account(self, card_number: str) -> Optional[Account]:
+    def find_account(self, card_number: str) -> Account | None:
         for account in self.accounts:
             if account.card_number == card_number:
                 return account
@@ -57,10 +57,9 @@ class ATM(object):
         """
         Проверяет номер карты и PIN-код.
 
-        При успехе счётчик неверных попыток обнуляется и в атрибут
-        current_account записывается авторизованный счёт.
-        При неудаче счётчик увеличивается, а после MAX_PIN_ATTEMPTS
-        неудач подряд карта блокируется.
+        Если PIN правильный — выполняет вход и сохраняет текущий счёт.
+        Если PIN неправильный — увеличивает счётчик ошибок.
+        После MAX_PIN_ATTEMPTS карта блокируется.
         """
         account = self.find_account(card_number)
         if account is None:
@@ -71,16 +70,19 @@ class ATM(object):
 
         if account.pin_hash != hash_pin(pin):
             account.failed_attempts += 1
+
             if account.failed_attempts >= MAX_PIN_ATTEMPTS:
                 account.locked = True
-                self._save_accounts()
-                raise ATMError(
+                message = (
                     "Неверный PIN-код. Карта заблокирована после "
                     f"{MAX_PIN_ATTEMPTS} неверных попыток"
                 )
+            else:
+                remaining = MAX_PIN_ATTEMPTS - account.failed_attempts
+                message = f"Неверный PIN-код. Осталось попыток: {remaining}"
+
             self._save_accounts()
-            remaining = MAX_PIN_ATTEMPTS - account.failed_attempts
-            raise ATMError(f"Неверный PIN-код. Осталось попыток: {remaining}")
+            raise ATMError(message)
 
         account.failed_attempts = 0
         self._save_accounts()
@@ -94,15 +96,18 @@ class ATM(object):
     # Операции со счётом
 
     def get_balance(self) -> float:
-        return self._require_current_account().balance
+        """Возвращает баланс текущего авторизованного счёта."""
+        account = self._require_current_account()
+        return account.balance
 
-    def withdraw(self, amount: float) -> Dict[int, int]:
+    def withdraw(self, amount: float) -> dict[int, int]:
         """
         Снимает наличные с текущего счёта.
         """
         account = self._require_current_account()
         self._validate_withdraw_amount(amount, account.balance)
 
+        # Определяем, какими купюрами банкомат сможет выдать сумму.
         breakdown = self._banknote_breakdown(int(amount))
         if breakdown is None:
             raise ATMError(
@@ -136,7 +141,7 @@ class ATM(object):
         )
 
     def transfer(self, recipient_card_number: str, amount: float) -> None:
-        """Переводит средства с текущего счёта на другой счёт."""
+        """Переводит деньги между двумя существующими счетами."""
         account = self._require_current_account()
 
         if amount <= 0:
@@ -169,19 +174,22 @@ class ATM(object):
             f"Перевод от карты {account.masked_card_number()}: {amount:.2f} ₽",
         )
 
-    def get_history(self) -> List[dict]:
+    def get_history(self) -> list[dict]:
         """Возвращает историю операций текущего пользователя, новые сверху."""
         account = self._require_current_account()
-        own = []
+        own_transactions = []
 
         for transaction in self.transactions:
             if transaction["card_number"] == account.card_number:
-                own.append(transaction)        
-        return list(reversed(own))
+                own_transactions.append(transaction)
+
+        own_transactions.reverse()
+        return own_transactions
 
     # Внутренние вспомогательные методы
 
     def _require_current_account(self) -> Account:
+        """Проверяет, что пользователь авторизован, и возвращает его счёт."""
         if self.current_account is None:
             raise ATMError("Нет активной сессии. Пройдите авторизацию")
         return self.current_account
@@ -205,16 +213,16 @@ class ATM(object):
             raise ATMError("Недостаточно средств на счёте")
 
     @staticmethod
-    def _banknote_breakdown(amount: int) -> Optional[Dict[int, int]]:
+    def _banknote_breakdown(amount: int) -> dict[int, int] | None:
         """
-        Жадно раскладывает сумму на доступные номиналы купюр.
+        Раскладывает сумму на доступные номиналы купюр.
 
-        Для набора номиналов BANKNOTES жадный алгоритм всегда находит
-        точное разложение любой суммы, кратной 5 (наименьшему номиналу),
-        поэтому единственная причина вернуть None — сумма не кратна 5.
+        Перебирает купюры от большего номинала к меньшему и
+        берёт максимально возможное количество каждой купюры.
+        Возвращает None, если сумму нельзя выдать без остатка.
         """
         remaining = amount
-        breakdown: Dict[int, int] = {}
+        breakdown: dict[int, int] = {}
         for note in BANKNOTES:
             count, remaining = divmod(remaining, note)
             if count:
@@ -226,15 +234,16 @@ class ATM(object):
     def _log_transaction(
         self, card_number: str, operation_type: str, amount: float, description: str
     ) -> None:
-        self.transactions.append(
-            {
-                "card_number": card_number,
-                "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "type": operation_type,
-                "amount": round(amount, 2),
-                "description": description,
-            }
-        )
+        """Добавляет запись об операции в историю и сохраняет её в файл."""
+        transaction = {
+            "card_number": card_number,
+            "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "type": operation_type,
+            "amount": round(amount, 2),
+            "description": description,
+        }
+
+        self.transactions.append(transaction)
         self._save_transactions()
 
     def _save_accounts(self) -> None:
