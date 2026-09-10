@@ -1,0 +1,4 @@
+accounts.json
+transactions.json
+.venv/
+**/__pycache__/

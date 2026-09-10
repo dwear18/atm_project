@@ -36,5 +36,13 @@ class Account:
         parts = self.card_number.split("-")
         if len(parts) <= 2:
             return self.card_number
-        masked_middle = ["*" * len(p) for p in parts[1:-1]]
-        return "-".join([parts[0], *masked_middle, parts[-1]])
+        masked_parts = []
+
+        masked_parts.append(parts[0])
+
+        for part in parts[1:-1]:
+            masked_parts.append("*" * len(part))
+
+        masked_parts.append(parts[-1])
+
+        return "-".join(masked_parts)

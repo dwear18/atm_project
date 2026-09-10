@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import hashlib
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -49,9 +47,11 @@ class ATM(object):
     # Авторизация
 
     def find_account(self, card_number: str) -> Optional[Account]:
-        return next(
-            (a for a in self.accounts if a.card_number == card_number), None
-        )
+        for account in self.accounts:
+            if account.card_number == card_number:
+                return account
+
+        return None
 
     def authenticate(self, card_number: str, pin: str) -> Account:
         """
@@ -172,9 +172,11 @@ class ATM(object):
     def get_history(self) -> List[dict]:
         """Возвращает историю операций текущего пользователя, новые сверху."""
         account = self._require_current_account()
-        own = [
-            t for t in self.transactions if t["card_number"] == account.card_number
-        ]
+        own = []
+
+        for transaction in self.transactions:
+            if transaction["card_number"] == account.card_number:
+                own.append(transaction)        
         return list(reversed(own))
 
     # Внутренние вспомогательные методы

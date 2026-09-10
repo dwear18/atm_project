@@ -29,14 +29,25 @@ def load_accounts(path: str) -> List[Account]:
         raise StorageError(f"Файл {path} повреждён и не может быть прочитан") from exc
 
     try:
-        return [Account.from_dict(item) for item in raw]
+        accounts = []
+
+        for item in raw:
+            account = Account.from_dict(item)
+            accounts.append(account)
+
+        return accounts
+    
     except (KeyError, TypeError, ValueError) as exc:
         raise StorageError(f"Файл {path} имеет неверную структуру") from exc
 
 
 def save_accounts(path: str, accounts: List[Account]) -> None:
     """Сохраняет список счетов в JSON-файл."""
-    data = [account.to_dict() for account in accounts]
+    data = []
+
+    for account in accounts:
+        data.append(account.to_dict())
+        
     _atomic_write(path, data)
 
 
