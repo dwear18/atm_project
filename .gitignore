@@ -1,0 +1,3 @@
+transactions.json
+.venv/
+**/__pycache__/

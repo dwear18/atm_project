@@ -1,7 +1,5 @@
 """Класс ATMApp — графический интерфейс банкомата на tkinter."""
 
-from __future__ import annotations
-
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -31,18 +29,17 @@ class ATMApp(tk.Tk):
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
-        self.frames: dict[str, tk.Frame] = {}
-        for FrameClass in (
-            LoginScreen,
-            MainMenuScreen,
-            BalanceScreen,
-            WithdrawScreen,
-            DepositScreen,
-            TransferScreen,
-            HistoryScreen,
-        ):
-            frame = FrameClass(container, self)
-            self.frames[FrameClass.__name__] = frame
+        self.frames = {}
+
+        self.frames["LoginScreen"] = LoginScreen(container, self)
+        self.frames["MainMenuScreen"] = MainMenuScreen(container, self)
+        self.frames["BalanceScreen"] = BalanceScreen(container, self)
+        self.frames["WithdrawScreen"] = WithdrawScreen(container, self)
+        self.frames["DepositScreen"] = DepositScreen(container, self)
+        self.frames["TransferScreen"] = TransferScreen(container, self)
+        self.frames["HistoryScreen"] = HistoryScreen(container, self)
+
+        for frame in self.frames.values():
             frame.grid(row=0, column=0, sticky="nsew")
 
         self.show_frame("LoginScreen")
@@ -348,8 +345,14 @@ class HistoryScreen(BaseScreen):
             )
 
 
-def _back_button(frame: tk.Frame, app: ATMApp, target: str) -> None:
-    """Общая кнопка «Назад», используемая на всех операционных экранах."""
+def _back_button(frame, app, target):
+
+    def go_back():
+        app.show_frame(target)
+
     tk.Button(
-        frame, text="Назад", font=FONT_TEXT, command=lambda: app.show_frame(target)
+        frame,
+        text="Назад",
+        font=FONT_TEXT,
+        command=go_back,
     ).pack(fill="x", pady=(16, 0))
