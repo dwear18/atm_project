@@ -2,7 +2,6 @@
 
 import json
 import os
-from typing import List
 
 from .models import Account
 
@@ -12,7 +11,7 @@ class StorageError(Exception):
     показать пользователю понятное сообщение вместо трассировки."""
 
 
-def load_accounts(path: str) -> List[Account]:
+def load_accounts(path: str) -> list[Account]:
     """
     Загружает список счетов из JSON-файла.
 
@@ -34,14 +33,14 @@ def load_accounts(path: str) -> List[Account]:
         for item in raw:
             account = Account.from_dict(item)
             accounts.append(account)
-
+            
         return accounts
     
     except (KeyError, TypeError, ValueError) as exc:
         raise StorageError(f"Файл {path} имеет неверную структуру") from exc
 
 
-def save_accounts(path: str, accounts: List[Account]) -> None:
+def save_accounts(path: str, accounts: list[Account]) -> None:
     """Сохраняет список счетов в JSON-файл."""
     data = []
 
@@ -51,7 +50,7 @@ def save_accounts(path: str, accounts: List[Account]) -> None:
     _atomic_write(path, data)
 
 
-def load_transactions(path: str) -> List[dict]:
+def load_transactions(path: str) -> list[dict]:
     """Загружает журнал операций."""
 
     if not os.path.exists(path):
@@ -64,7 +63,7 @@ def load_transactions(path: str) -> List[dict]:
         raise StorageError(f"Файл {path} повреждён и не может быть прочитан") from exc
 
 
-def save_transactions(path: str, transactions: List[dict]) -> None:
+def save_transactions(path: str, transactions: list[dict]) -> None:
     """Сохраняет журнал операций в JSON-файл."""
     _atomic_write(path, transactions)
 
